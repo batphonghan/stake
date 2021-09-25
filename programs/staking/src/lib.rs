@@ -43,9 +43,10 @@ pub struct InitMessage<'info> {
     pub system_program: Program<'info, System>,
 }
 
+// Any oen can deposit
 #[derive(Accounts)]
 pub struct DepositMessage<'info> {
-    #[account(mut, has_one = authority)]
+    #[account(mut)]
     pub token: Account<'info, Token>,
 
     pub authority: Signer<'info>,

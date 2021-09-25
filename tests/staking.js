@@ -18,7 +18,7 @@ describe("Test staking", () => {
 
   it("Init", async () => {
     // Add your test here.
-    await program.rpc.init(alice.publicKey, new BN(200), {
+    await program.rpc.init(provider.wallet.publicKey, new BN(200), {
       accounts: {
         token: alice.publicKey,
         user: provider.wallet.publicKey,
@@ -26,18 +26,30 @@ describe("Test staking", () => {
       },
       signers: [alice],
     });
-
-    console.log(program.account.token);
     let aliceData = await program.account.token.fetch(alice.publicKey);
     assert.ok(aliceData.amount.toNumber() === 200);
   });
 
-  //   it("With draw", async () => {
-  //     await program.rpc.withdraw(new BN(100), {
-  //       accounts: {
-  //         tokens: alice.publicKey,
-  //         authority: provider.wallet.publicKey,
-  //       },
-  //     });
-  //   });
+  it("Deposit", async () => {
+    await program.rpc.deposit(new BN(200), {
+      accounts: {
+        token: alice.publicKey,
+        authority: provider.wallet.publicKey,
+      },
+    });
+
+    let aliceData = await program.account.token.fetch(alice.publicKey);
+    assert.ok(aliceData.amount.toNumber() === 400);
+  });
+
+  it("Withdraw", async () => {
+    await program.rpc.withdraw(new BN(100), {
+      accounts: {
+        token: alice.publicKey,
+        authority: provider.wallet.publicKey,
+      },
+    });
+    let aliceData = await program.account.token.fetch(alice.publicKey);
+    assert.ok(aliceData.amount.toNumber() === 300);
+  });
 });
