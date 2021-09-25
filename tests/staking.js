@@ -1,55 +1,55 @@
-const anchor = require("@project-serum/anchor");
 const assert = require("assert");
-const { BN } = require("bn.js");
+const anchor = require("@project-serum/anchor");
+const serumCmn = require("@project-serum/common");
+const TokenInstructions = require("@project-serum/serum").TokenInstructions;
 
-const { SystemProgram } = anchor.web3;
-
-describe("Test staking", () => {
+describe("Staking ", () => {
   // Configure the client to use the local cluster.
-  const provider = anchor.Provider.local();
-
-  // Configure the client to use the local cluster.
-  anchor.setProvider(provider);
-
-  const alice = anchor.web3.Keypair.generate();
-  const bob = anchor.web3.Keypair.generate();
+  anchor.setProvider(anchor.Provider.env());
 
   const program = anchor.workspace.Staking;
 
-  it("Init", async () => {
-    // Add your test here.
-    await program.rpc.init(provider.wallet.publicKey, new BN(200), {
-      accounts: {
-        token: alice.publicKey,
-        user: provider.wallet.publicKey,
-        systemProgram: SystemProgram.programId,
-      },
-      signers: [alice],
-    });
-    let aliceData = await program.account.token.fetch(alice.publicKey);
-    assert.ok(aliceData.amount.toNumber() === 200);
+  const MINT_TOKENS = 2100000000000000; // 21M with 8dp
+  const MINT_DECIMALS = 8;
+
+  let mint = null;
+  let god = null;
+  let creatorTokenAcc = null;
+  let creatorAcc = anchor.web3.Keypair.generate();
+
+  it("Sets up initial test state", async () => {
+    const [_mint, _god] = await serumCmn.createMintAndVault(
+      program.provider,
+      new anchor.BN(MINT_TOKENS),
+      undefined,
+      MINT_DECIMALS
+    );
+    mint = _mint;
+    god = _god;
+
+    creatorTokenAcc = await serumCmn.createTokenAccount(
+      program.provider,
+      mint,
+      creatorAcc.publicKey
+    );
   });
 
-  it("Deposit", async () => {
-    await program.rpc.deposit(new BN(200), {
+  it("Deposits token", async () => {
+    const depositAmount = new anchor.BN(120);
+
+    await program.rpc.deposit(depositAmount, {
       accounts: {
-        token: alice.publicKey,
-        authority: provider.wallet.publicKey,
+        from: god,
+        to: creatorTokenAcc,
+        owner: program.provider.wallet.publicKey,
+        tokenProgram: TokenInstructions.TOKEN_PROGRAM_ID,
       },
     });
 
-    let aliceData = await program.account.token.fetch(alice.publicKey);
-    assert.ok(aliceData.amount.toNumber() === 400);
-  });
-
-  it("Withdraw", async () => {
-    await program.rpc.withdraw(new BN(100), {
-      accounts: {
-        token: alice.publicKey,
-        authority: provider.wallet.publicKey,
-      },
-    });
-    let aliceData = await program.account.token.fetch(alice.publicKey);
-    assert.ok(aliceData.amount.toNumber() === 300);
+    const memberVault = await serumCmn.getTokenAccount(
+      program.provider,
+      creatorTokenAcc
+    );
+    assert.ok(memberVault.amount.eq(depositAmount));
   });
 });
