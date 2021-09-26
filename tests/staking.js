@@ -39,8 +39,8 @@ describe("Staking ", () => {
 
     await program.rpc.deposit(depositAmount, {
       accounts: {
-        from: god,
-        to: creatorTokenAcc,
+        depositor: god,
+        vault: creatorTokenAcc,
         owner: program.provider.wallet.publicKey,
         tokenProgram: TokenInstructions.TOKEN_PROGRAM_ID,
       },

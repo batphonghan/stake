@@ -14,8 +14,8 @@ pub mod staking {
 
     pub fn deposit(ctx: Context<Deposit>, amount: u64) -> ProgramResult {
         let cpi_accounts = Transfer {
-            from: ctx.accounts.from.to_account_info().clone(),
-            to: ctx.accounts.to.to_account_info().clone(),
+            from: ctx.accounts.depositor.to_account_info().clone(),
+            to: ctx.accounts.vault.to_account_info().clone(),
             authority: ctx.accounts.owner.clone(),
         };
         let cpi_program = ctx.accounts.token_program.clone();
@@ -29,9 +29,10 @@ pub mod staking {
 #[derive(Accounts)]
 pub struct Deposit<'info> {
     #[account(mut, has_one = owner)]
-    from: Account<'info, TokenAccount>,
-    #[account(mut, "from.mint == to.mint")]
-    to: Account<'info, TokenAccount>,
+    depositor: Account<'info, TokenAccount>,
+
+    #[account(mut, "depositor.mint == vault.mint")]
+    vault: Account<'info, TokenAccount>,
     #[account(signer)]
     owner: AccountInfo<'info>,
     token_program: AccountInfo<'info>,
