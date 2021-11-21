@@ -1,4 +1,5 @@
 use anchor_lang::prelude::*;
+use anchor_lang::solana_program::system_program;
 use anchor_lang::solana_program::{
     log::{sol_log_compute_units, sol_log_params, sol_log_slice},
     pubkey::Pubkey,
@@ -34,8 +35,12 @@ pub mod staking {
 
 #[derive(Accounts)]
 pub struct Init<'info> {
-    #[account(mut)]
+    #[account(init, payer = admin, space = 8 + 8)]
     pub counter: Account<'info, Counter>,
+
+    #[account(mut)]
+    pub admin: Signer<'info>,
+    pub system_program: Program<'info, System>,
 }
 
 #[account]

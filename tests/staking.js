@@ -3,6 +3,22 @@ const anchor = require("@project-serum/anchor");
 const serumCmn = require("@project-serum/common");
 const TokenInstructions = require("@project-serum/serum").TokenInstructions;
 
+describe.only("Test counter", () => {
+  // Configure the client to use the local cluster.
+  anchor.setProvider(anchor.Provider.env());
+
+  const program = anchor.workspace.Staking;
+
+  const counter = anchor.web3.Keypair.generate();
+  it("Let me check the counter", async () => {
+    await program.rpc.init(100, {
+      accounts: {
+        counter: counter.publicKey,
+      },
+    });
+  });
+});
+
 describe("Staking ", () => {
   // Configure the client to use the local cluster.
   anchor.setProvider(anchor.Provider.env());

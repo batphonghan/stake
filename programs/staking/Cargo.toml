@@ -6,15 +6,21 @@ edition = "2018"
 
 [lib]
 crate-type = ["cdylib", "lib"]
-name = "staking"
+name = "bph_staking"
 
 [features]
 no-entrypoint = []
 no-idl = []
 cpi = ["no-entrypoint"]
-default = []
+test-bpf = []
+default = ["test-bpf"]
 
 [dependencies]
 anchor-lang = "0.16.0"
 anchor-spl = "0.16.0"
 solana-program = "1.6.6"
+
+[dev-dependencies]
+assert_matches = "1.5.0"
+solana-sdk = "1.7.8"
+solana-program-test = "1.7.8"
