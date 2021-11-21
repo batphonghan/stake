@@ -13,9 +13,12 @@ pub mod staking {
 
     use super::*;
 
-    pub fn init(ctx: Context<Init>, amount: u64) -> ProgramResult {
-        let ref mut counter = ctx.accounts.counter;
-        counter.amount = amount;
+    pub fn init(ctx: Context<Init>, bump: u8, amount: u64) -> ProgramResult {
+        let ref mut vault = ctx.accounts.vault;
+        vault.amount = amount;
+        vault.bump = bump;
+        vault.admin = *ctx.accounts.admin.key;
+
         Ok(())
     }
 
@@ -33,19 +36,41 @@ pub mod staking {
     }
 }
 
+
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, Default, Debug)]
+pub struct PoolBumps {
+    pub bump: u8,
+}
+
 #[derive(Accounts)]
+#[instruction(bump: u8)]
 pub struct Init<'info> {
-    #[account(init, payer = admin, space = 8 + 8)]
-    pub counter: Account<'info, Counter>,
+    #[account(
+        init, 
+        seeds = [b"vault", admin.key().as_ref()],
+        bump = bump,
+        payer = payer,
+        space = 8 + 64,
+    )]
+    pub vault: ProgramAccount<'info, Vault>,
 
     #[account(mut)]
     pub admin: Signer<'info>,
+
+    #[account(mut)]
+    pub payer: Signer<'info>,
+
+    #[account(mut)]
+    pub mint_token: AccountInfo<'info>,
+
     pub system_program: Program<'info, System>,
 }
 
 #[account]
-pub struct Counter {
+pub struct Vault {
     pub amount: u64,
+    pub bump: u8,
+    pub admin: Pubkey,
 }
 
 #[derive(Accounts)]

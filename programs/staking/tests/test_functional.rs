@@ -5,6 +5,7 @@ use anchor_lang::InstructionData;
 use assert_matches::assert_matches;
 use bph_staking;
 use solana_program::system_program;
+use solana_program::sysvar;
 use solana_sdk::{signature::Keypair, system_instruction, transport::Result};
 use {
     solana_program::{
@@ -23,26 +24,28 @@ async fn test_init() {
 
     let (mut banks_client, payer, _) = program_test.start().await;
 
-    let counter_keypair = Keypair::new();
+    let (user_vault, bump) =
+        Pubkey::find_program_address(&[b"vault", payer.pubkey().as_ref()], &program_id);
 
     let rs = process_ins(
         &mut banks_client,
         &[Instruction {
             program_id,
-            data: bph_staking::instruction::Init { amount: 1 }.data(),
+            data: bph_staking::instruction::Init { amount: 1, bump }.data(),
             accounts: bph_staking::accounts::Init {
-                counter: counter_keypair.pubkey(),
+                vault: user_vault,
                 admin: payer.pubkey(),
+                payer: payer.pubkey(),
                 system_program: system_program::id(),
             }
             .to_account_metas(None),
         }],
         &payer,
-        &[&counter_keypair],
+        &[&payer],
     )
     .await;
 
-    assert_matches!(rs, Ok(()));
+    assert_eq!(rs.is_ok(), true, "Rs is {:?}", rs);
 }
 
 async fn process_ins(
