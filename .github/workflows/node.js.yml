@@ -1,0 +1,54 @@
+name: Testing Anchor CI Runs
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: Set env vars
+      run: |
+        source ci/solana-version.sh
+        echo "SOLANA_VERSION=$solana_version" >> $GITHUB_ENV
+
+    - name: Install build dependencies
+      run: |
+        ci/install-build-deps.sh
+
+    - uses: actions-rs/toolchain@v1.0.6
+      with:
+          toolchain: stable
+          override: true
+          profile: minimal
+          components: rustfmt
+
+    - name: Rust Cache Dependency 
+      uses: Swatinem/rust-cache@v1.3.0
+      
+    - uses: actions/setup-node@v2
+      with:
+        node-version: '14'
+          
+    - name: Install Solana
+      run: |
+        source ci/solana-version.sh install
+        echo "$HOME/.local/share/solana/install/active_release/bin" >> $GITHUB_PATH
+        solana-keygen new
+
+    - name: Install Yarn/Mocha/Anchor
+      run: |
+        yarn install
+        npm install -g mocha
+        npm i -g @project-serum/anchor-cli
+
+    - name: Cargo Build And Test
+      run: |
+          source ./ci/anchor-test.sh

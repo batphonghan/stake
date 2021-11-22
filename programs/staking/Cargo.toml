@@ -16,9 +16,11 @@ test-bpf = []
 default = ["test-bpf"]
 
 [dependencies]
-anchor-lang = "0.16.0"
-anchor-spl = "0.16.0"
-solana-program = "1.6.6"
+spl-token = { version = "3.1.1", features = ["no-entrypoint"] }
+spl-associated-token-account = { version = "1.0.2", features = ["no-entrypoint"] }
+anchor-lang = "0.14.0"
+anchor-spl = "0.14.0"
+solana-program = "1.7.11"
 
 [dev-dependencies]
 assert_matches = "1.5.0"

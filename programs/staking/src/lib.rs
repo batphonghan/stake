@@ -1,3 +1,4 @@
+
 use anchor_lang::prelude::*;
 use anchor_lang::solana_program::system_program;
 use anchor_lang::solana_program::{
@@ -5,19 +6,16 @@ use anchor_lang::solana_program::{
     pubkey::Pubkey,
 };
 use anchor_spl::token::{self, Mint, TokenAccount, Transfer};
-
-declare_id!("Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS");
+use std::mem::size_of;
 
 #[program]
 pub mod staking {
-
     use super::*;
 
-    pub fn init(ctx: Context<Init>, bump: u8, amount: u64) -> ProgramResult {
+    pub fn init(ctx: Context<Init>, bump: Bump) -> ProgramResult {
         let ref mut vault = ctx.accounts.vault;
-        vault.amount = amount;
-        vault.bump = bump;
-        vault.admin = *ctx.accounts.admin.key;
+        vault.bump = bump.vault_bump;
+        vault.mint_token = ctx.accounts.mint_token.key();
 
         Ok(())
     }
@@ -36,51 +34,84 @@ pub mod staking {
     }
 }
 
-
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, Default, Debug)]
 pub struct PoolBumps {
     pub bump: u8,
 }
 
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, Default)]
+pub struct Bump {
+    pub vault_bump: u8,
+    pub token_bump: u8,
+    pub mint_bump: u8,
+}
+
 #[derive(Accounts)]
-#[instruction(bump: u8)]
+#[instruction(bump: Bump)]
 pub struct Init<'info> {
+    // For each token we have one vault
     #[account(
-        init, 
-        seeds = [b"vault", admin.key().as_ref()],
-        bump = bump,
+        init,
+        seeds = [b"vault", mint_token.key().as_ref()],
+        bump = bump.vault_bump,
         payer = payer,
-        space = 8 + 64,
+        space = size_of::<Vault>() + 8,
     )]
     pub vault: ProgramAccount<'info, Vault>,
 
-    #[account(mut)]
-    pub admin: Signer<'info>,
+    #[account(
+        init,
+        seeds = [b"vault_token", mint_token.key().as_ref(), vault.key().as_ref()],
+        bump = bump.token_bump,
+        token::mint = mint_token,
+        token::authority = vault,
+        payer = payer,
+    )]
+    pub vault_token: CpiAccount<'info, TokenAccount>,
 
-    #[account(mut)]
-    pub payer: Signer<'info>,
+    #[account(
+        init, 
+        seeds = [b"vault_mint", mint_token.key().as_ref(), vault.key().as_ref()],
+        bump = bump.mint_bump,
+        mint::authority = vault,
+        mint::decimals = mint_token.decimals,
+        payer = payer,
+    )]
+    pub vault_mint: CpiAccount<'info, Mint>,
 
-    #[account(mut)]
-    pub mint_token: AccountInfo<'info>,
+    pub mint_token: CpiAccount<'info, Mint>,
 
-    pub system_program: Program<'info, System>,
+
+    #[account(mut, signer)]
+    pub payer: AccountInfo<'info>,
+
+    #[account(address = system_program::ID)]
+    pub system_program: AccountInfo<'info>,
+
+    pub rent: Sysvar<'info, Rent>,
+
+    #[account(address = spl_token::ID)]
+    pub token_program: AccountInfo<'info>,
 }
 
 #[account]
 pub struct Vault {
-    pub amount: u64,
     pub bump: u8,
-    pub admin: Pubkey,
+    pub mint_token: Pubkey,  // The token this vault keep
+    pub vault_token: Pubkey, // PDA for this vault keep the token
+    pub vault_mint: Pubkey,  // LP token mint
 }
 
 #[derive(Accounts)]
 pub struct Deposit<'info> {
     #[account(mut, has_one = owner)]
-    depositor: Account<'info, TokenAccount>,
+    depositor: CpiAccount<'info, TokenAccount>,
 
-    #[account(mut, "depositor.mint == vault.mint")]
-    vault: Account<'info, TokenAccount>,
+    #[account(mut, "depositor.mint == vault.mint_token")]
+    vault: CpiAccount<'info, Vault>,
+
     #[account(signer)]
     owner: AccountInfo<'info>,
+
     token_program: AccountInfo<'info>,
 }
