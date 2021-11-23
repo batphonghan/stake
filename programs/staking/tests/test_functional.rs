@@ -220,4 +220,27 @@ async fn test_init() {
     .await
     .ok()
     .unwrap_or_else(|| panic!("Can not deposit "));
+
+    process_ins(
+        &mut banks_client,
+        &[Instruction {
+            program_id,
+            data: bph_staking::instruction::Withdraw { amount: 1_000_000 }.data(),
+            accounts: bph_staking::accounts::Withdraw {
+                vault,
+                vault_mint,
+                withdrawer: user_ata,
+                owner: user_keypair.pubkey(),
+                vault_token,
+                user_vault,
+                token_program: spl_token::id(),
+            }
+            .to_account_metas(None),
+        }],
+        &payer_keypair,
+        &[&user_keypair],
+    )
+    .await
+    .ok()
+    .unwrap_or_else(|| panic!("Can not withdraw "));
 }

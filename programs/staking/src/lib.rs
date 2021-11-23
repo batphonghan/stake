@@ -9,6 +9,8 @@ use std::mem::size_of;
 #[program]
 pub mod staking {
 
+    use anchor_spl::token::Burn;
+
     use super::*;
 
     pub fn init(ctx: Context<Init>, bump: Bump) -> ProgramResult {
@@ -50,6 +52,33 @@ pub mod staking {
                 authority: ctx.accounts.vault.to_account_info().clone(),
                 }, signer);
         token::mint_to(mint_to_ctx, amount)?;
+        Ok(())
+    }
+
+    pub fn withdraw(ctx: Context<Withdraw>, amount: u64) -> ProgramResult {
+        // Transfer from vault_token
+        let cpi_program = ctx.accounts.token_program.clone();
+        let signer_seeds = &[
+            b"vault".as_ref(), 
+            ctx.accounts.vault.mint_token.as_ref(),
+            ctx.accounts.vault.payer.as_ref(),
+            &[ctx.accounts.vault.bump],
+        ];
+        let signer = &[&signer_seeds[..]];
+        token::transfer(CpiContext::new_with_signer(
+            cpi_program,
+            Transfer {
+                from: ctx.accounts.vault_token.to_account_info().clone(),
+                to: ctx.accounts.withdrawer.to_account_info().clone(),
+                authority: ctx.accounts.vault.to_account_info().clone(),
+            }, signer), amount)?;
+
+        let cpi_program = ctx.accounts.token_program.clone();
+        token::burn(CpiContext::new(cpi_program, Burn {
+            authority: ctx.accounts.owner.clone(),
+            mint:ctx.accounts.vault_mint.to_account_info().clone(),
+            to: ctx.accounts.user_vault.to_account_info().clone(),
+        }), amount)?;
         Ok(())
     }
 }
@@ -122,6 +151,29 @@ pub struct Deposit<'info> {
     depositor: CpiAccount<'info, TokenAccount>,
 
     #[account(mut, "vault.mint_token == depositor.mint")]
+    vault: CpiAccount<'info, Vault>,
+
+    #[account(mut, "vault_token.mint == vault.mint_token")]
+    vault_token: CpiAccount<'info, TokenAccount>,
+
+    #[account(mut)]
+    vault_mint: CpiAccount<'info, Mint>,
+
+    #[account(mut, "user_vault.mint == vault.vault_mint")]
+    user_vault: CpiAccount<'info, TokenAccount>,
+
+    #[account(signer)]
+    owner: AccountInfo<'info>,
+
+    token_program: AccountInfo<'info>,
+}
+
+#[derive(Accounts)]
+pub struct Withdraw<'info> {
+    #[account(mut, has_one = owner)]
+    withdrawer: CpiAccount<'info, TokenAccount>,
+
+    #[account(mut, "vault.mint_token == withdrawer.mint")]
     vault: CpiAccount<'info, Vault>,
 
     #[account(mut, "vault_token.mint == vault.mint_token")]
