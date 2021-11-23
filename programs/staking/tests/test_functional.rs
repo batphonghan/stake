@@ -18,71 +18,70 @@ use helper::{initialize_mint, process_ins};
 
 use solana_sdk::signature::Signer;
 
-#[tokio::test]
-async fn test_init() {
-    let program_id = Pubkey::from_str("Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS").unwrap();
-    let program_test = ProgramTest::new("bph_staking", program_id, processor!(bph_staking::entry));
-
-    let (mut banks_client, payer, _) = program_test.start().await;
-
-    // Init user and token
-    let user_authority = Keypair::new();
-    let token_keypair = Keypair::new();
+async fn init_user_token(
+    banks_client: &mut BanksClient,
+    user_keypair: &Keypair,
+    token_keypair: &Keypair,
+    payer_keypair: &Keypair,
+) {
     initialize_mint(
-        &mut banks_client,
-        &payer,
+        banks_client,
+        &payer_keypair,
         &token_keypair,
-        &user_authority.pubkey(),
+        &user_keypair.pubkey(),
         6,
     )
     .await;
 
-    // helper::create_account(
-    //     &mut banks_client,
-    //     &payer,
-    //     &token_keypair.pubkey(),
-    //     &token_keypair,
-    //     &user_authority.pubkey(),
-    // )
-    // .await;
-
-    return;
-
     process_ins(
-        &mut banks_client,
+        banks_client,
         &[
             spl_associated_token_account::create_associated_token_account(
-                &payer.pubkey(),
-                &user_authority.pubkey(),
+                &payer_keypair.pubkey(),
+                &user_keypair.pubkey(),
                 &token_keypair.pubkey(),
             ),
         ],
-        &payer,
+        &payer_keypair,
         &[],
     )
     .await
     .ok()
     .unwrap_or_else(|| panic!("Can not create ATA account"));
-    return;
+}
 
-    let (vault, vault_bump) =
-        Pubkey::find_program_address(&[b"vault", payer.pubkey().as_ref()], &program_id);
+#[tokio::test]
+async fn test_init() {
+    let program_id = Pubkey::from_str("Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS").unwrap();
+    let program_test = ProgramTest::new("bph_staking", program_id, processor!(bph_staking::entry));
 
+    let (mut banks_client, payer_keypair, _) = program_test.start().await;
+
+    // Init user and token
+    let user_keypair = Keypair::new();
+    let token_keypair = Keypair::new();
     let mint_token = token_keypair.pubkey();
-    initialize_mint(
+
+    init_user_token(
         &mut banks_client,
-        &payer,
+        &user_keypair,
         &token_keypair,
-        &payer.pubkey(),
-        6,
+        &payer_keypair,
     )
     .await;
 
+    let (vault, vault_bump) = Pubkey::find_program_address(
+        &[
+            b"vault",
+            mint_token.as_ref(),
+            payer_keypair.pubkey().as_ref(),
+        ],
+        &program_id,
+    );
     let (vault_token, token_bump) = Pubkey::find_program_address(
         &[b"vault_token", mint_token.as_ref(), vault.as_ref()],
         &program_id,
     );
-
     let (vault_mint, mint_bump) = Pubkey::find_program_address(
         &[b"vault_mint", mint_token.as_ref(), vault.as_ref()],
         &program_id,
@@ -105,15 +104,15 @@ async fn test_init() {
                 vault_token,
                 mint_token,
                 vault_mint,
-                payer: payer.pubkey(),
+                payer: payer_keypair.pubkey(),
                 rent: sysvar::rent::ID,
                 system_program: system_program::id(),
                 token_program: spl_token::id(),
             }
             .to_account_metas(None),
         }],
-        &payer,
-        &[&payer],
+        &payer_keypair,
+        &[&payer_keypair],
     )
     .await
     .ok()

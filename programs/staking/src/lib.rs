@@ -52,7 +52,7 @@ pub struct Init<'info> {
     // For each token we have one vault
     #[account(
         init,
-        seeds = [b"vault", mint_token.key().as_ref()],
+        seeds = [b"vault", mint_token.key().as_ref(), payer.key().as_ref()],
         bump = bump.vault_bump,
         payer = payer,
         space = size_of::<Vault>() + 8,
