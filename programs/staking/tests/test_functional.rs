@@ -64,7 +64,37 @@ async fn init_user_token(
     )
     .await;
 
-    return user_ata;
+    user_ata
+}
+
+async fn init_user_vault(
+    banks_client: &mut BanksClient,
+    vault_mint: Pubkey,
+    user_keypair: &Keypair,
+    token_keypair: &Keypair,
+    payer_keypair: &Keypair,
+) -> Pubkey {
+    process_ins(
+        banks_client,
+        &[
+            spl_associated_token_account::create_associated_token_account(
+                &payer_keypair.pubkey(),
+                &user_keypair.pubkey(),
+                &vault_mint,
+            ),
+        ],
+        &payer_keypair,
+        &[],
+    )
+    .await
+    .ok()
+    .unwrap_or_else(|| panic!("Can not create ATA account"));
+    let user_vault_ata = spl_associated_token_account::get_associated_token_address(
+        &user_keypair.pubkey(),
+        &vault_mint,
+    );
+
+    user_vault_ata
 }
 
 #[tokio::test]
@@ -78,15 +108,6 @@ async fn test_init() {
     let user_keypair = Keypair::new();
     let token_keypair = Keypair::new();
     let mint_token = token_keypair.pubkey();
-
-    let user_ata = init_user_token(
-        &mut banks_client,
-        &user_keypair,
-        &token_keypair,
-        &payer_keypair,
-    )
-    .await;
-
     let (vault, vault_bump) = Pubkey::find_program_address(
         &[
             b"vault",
@@ -103,6 +124,14 @@ async fn test_init() {
         &[b"vault_mint", mint_token.as_ref(), vault.as_ref()],
         &program_id,
     );
+
+    let user_ata = init_user_token(
+        &mut banks_client,
+        &user_keypair,
+        &token_keypair,
+        &payer_keypair,
+    )
+    .await;
 
     process_ins(
         &mut banks_client,
@@ -135,6 +164,14 @@ async fn test_init() {
     .ok()
     .unwrap_or_else(|| panic!("Can not create Init "));
 
+    let user_vault = init_user_vault(
+        &mut banks_client,
+        vault_mint,
+        &user_keypair,
+        &token_keypair,
+        &payer_keypair,
+    )
+    .await;
     process_ins(
         &mut banks_client,
         &[Instruction {
@@ -147,6 +184,8 @@ async fn test_init() {
                 vault,
                 depositor: user_ata,
                 owner: user_keypair.pubkey(),
+                vault_mint,
+                user_vault,
                 vault_token,
                 token_program: spl_token::id(),
             }
@@ -166,9 +205,11 @@ async fn test_init() {
             data: bph_staking::instruction::Deposit { amount: 1_000_000 }.data(),
             accounts: bph_staking::accounts::Deposit {
                 vault,
+                vault_mint,
                 depositor: user_ata,
                 owner: user_keypair.pubkey(),
                 vault_token,
+                user_vault,
                 token_program: spl_token::id(),
             }
             .to_account_metas(None),
