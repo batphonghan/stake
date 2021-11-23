@@ -14,21 +14,22 @@ use {
 };
 
 mod helper;
-use helper::{initialize_mint, process_ins};
+use helper::{initialize_mint, mint_to, process_ins};
 
 use solana_sdk::signature::Signer;
 
+const INIT_AMOUNT: u64 = 1_000_000;
 async fn init_user_token(
     banks_client: &mut BanksClient,
     user_keypair: &Keypair,
     token_keypair: &Keypair,
     payer_keypair: &Keypair,
-) {
+) -> Pubkey {
     initialize_mint(
         banks_client,
         &payer_keypair,
         &token_keypair,
-        &user_keypair.pubkey(),
+        &payer_keypair.pubkey(),
         6,
     )
     .await;
@@ -48,6 +49,22 @@ async fn init_user_token(
     .await
     .ok()
     .unwrap_or_else(|| panic!("Can not create ATA account"));
+
+    let user_ata = spl_associated_token_account::get_associated_token_address(
+        &user_keypair.pubkey(),
+        &token_keypair.pubkey(),
+    );
+
+    mint_to(
+        payer_keypair,
+        &token_keypair.pubkey(),
+        &user_ata,
+        INIT_AMOUNT,
+        banks_client,
+    )
+    .await;
+
+    return user_ata;
 }
 
 #[tokio::test]
@@ -62,7 +79,7 @@ async fn test_init() {
     let token_keypair = Keypair::new();
     let mint_token = token_keypair.pubkey();
 
-    init_user_token(
+    let user_ata = init_user_token(
         &mut banks_client,
         &user_keypair,
         &token_keypair,
@@ -118,25 +135,48 @@ async fn test_init() {
     .ok()
     .unwrap_or_else(|| panic!("Can not create Init "));
 
-    // let assert_eq!(
-    //     process_ins(
-    //         &mut banks_client,
-    //         &[Instruction {
-    //             program_id,
-    //             data: bph_staking::instruction::Deposit { amount: 1 }.data(),
-    //             accounts: bph_staking::accounts::Deposit {
-    //                 vault: user_vault,
-    //                 depositor: user_vault,
-    //                 owner: user_vault,
-    //                 token_program: user_vault,
-    //             }
-    //             .to_account_metas(None),
-    //         }],
-    //         &payer,
-    //         &[&payer],
-    //     )
-    //     .await
-    //     .is_ok(),
-    //     true,
-    // );
+    process_ins(
+        &mut banks_client,
+        &[Instruction {
+            program_id,
+            data: bph_staking::instruction::Deposit {
+                amount: INIT_AMOUNT * 2,
+            }
+            .data(),
+            accounts: bph_staking::accounts::Deposit {
+                vault,
+                depositor: user_ata,
+                owner: user_keypair.pubkey(),
+                vault_token,
+                token_program: spl_token::id(),
+            }
+            .to_account_metas(None),
+        }],
+        &payer_keypair,
+        &[&user_keypair],
+    )
+    .await
+    .err()
+    .unwrap_or_else(|| panic!("Should not success"));
+
+    process_ins(
+        &mut banks_client,
+        &[Instruction {
+            program_id,
+            data: bph_staking::instruction::Deposit { amount: 1_000_000 }.data(),
+            accounts: bph_staking::accounts::Deposit {
+                vault,
+                depositor: user_ata,
+                owner: user_keypair.pubkey(),
+                vault_token,
+                token_program: spl_token::id(),
+            }
+            .to_account_metas(None),
+        }],
+        &payer_keypair,
+        &[&user_keypair],
+    )
+    .await
+    .ok()
+    .unwrap_or_else(|| panic!("Can not deposit "));
 }

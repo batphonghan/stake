@@ -36,7 +36,6 @@ pub async fn process_ins(
         .process_transaction_with_commitment(tx, CommitmentLevel::Finalized)
         .await
 }
-
 pub async fn initialize_mint(
     banks_client: &mut BanksClient,
     payer: &Keypair,
@@ -73,35 +72,26 @@ pub async fn initialize_mint(
     assert_matches!(banks_client.process_transaction(transaction).await, Ok(()));
 }
 
-pub async fn create_account(
-    banks_client: &mut BanksClient,
-    payer: &Keypair,
+pub async fn mint_to(
+    owner: &Keypair,
     token_mint: &Pubkey,
-    token_keypair: &Keypair,
-    authority: &Pubkey,
+    account_pubkey: &Pubkey,
+    amount: u64,
+    banks_client: &mut BanksClient,
 ) {
-    let rent = banks_client.get_rent().await.unwrap();
-    let token_account_rent = rent.minimum_balance(spl_token::state::Account::LEN);
     let recent_blockhash = banks_client.get_recent_blockhash().await.unwrap();
     let transaction = Transaction::new_signed_with_payer(
-        &[
-            system_instruction::create_account(
-                &payer.pubkey(),
-                &token_keypair.pubkey(),
-                token_account_rent,
-                spl_token::state::Account::LEN as u64,
-                &spl_token::id(),
-            ),
-            spl_token::instruction::initialize_account(
-                &spl_token::id(),
-                &token_keypair.pubkey(),
-                &token_mint,
-                authority,
-            )
-            .unwrap(),
-        ],
-        Some(&payer.pubkey()),
-        &[payer, token_keypair],
+        &[spl_token::instruction::mint_to(
+            &spl_token::id(),
+            token_mint,
+            account_pubkey,
+            &owner.pubkey(),
+            &[],
+            amount,
+        )
+        .unwrap()],
+        Some(&owner.pubkey()),
+        &[owner],
         recent_blockhash,
     );
 

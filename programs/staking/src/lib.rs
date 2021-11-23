@@ -23,7 +23,7 @@ pub mod staking {
     pub fn deposit(ctx: Context<Deposit>, amount: u64) -> ProgramResult {
         let cpi_accounts = Transfer {
             from: ctx.accounts.depositor.to_account_info().clone(),
-            to: ctx.accounts.vault.to_account_info().clone(),
+            to: ctx.accounts.vault_token.to_account_info().clone(),
             authority: ctx.accounts.owner.clone(),
         };
         let cpi_program = ctx.accounts.token_program.clone();
@@ -81,7 +81,6 @@ pub struct Init<'info> {
 
     pub mint_token: CpiAccount<'info, Mint>,
 
-
     #[account(mut, signer)]
     pub payer: AccountInfo<'info>,
 
@@ -109,6 +108,9 @@ pub struct Deposit<'info> {
 
     #[account(mut, "depositor.mint == vault.mint_token")]
     vault: CpiAccount<'info, Vault>,
+
+    #[account(mut)]
+    vault_token: CpiAccount<'info, TokenAccount>,
 
     #[account(signer)]
     owner: AccountInfo<'info>,
