@@ -53,12 +53,6 @@ pub mod staking {
         Ok(())
     }
 }
-
-#[derive(AnchorSerialize, AnchorDeserialize, Clone, Default, Debug)]
-pub struct PoolBumps {
-    pub bump: u8,
-}
-
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, Default)]
 pub struct Bump {
     pub vault_bump: u8,

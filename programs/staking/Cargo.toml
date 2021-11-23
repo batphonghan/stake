@@ -13,7 +13,7 @@ no-entrypoint = []
 no-idl = []
 cpi = ["no-entrypoint"]
 test-bpf = []
-default = ["test-bpf"]
+default = []
 
 [dependencies]
 spl-token = { version = "3.1.1", features = ["no-entrypoint"] }
