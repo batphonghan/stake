@@ -6,6 +6,7 @@ use anchor_lang::solana_program::{
 use anchor_spl::token::{self, Mint, TokenAccount, Transfer, MintTo};
 use std::mem::size_of;
 
+declare_id!("Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS");
 #[program]
 pub mod staking {
 
@@ -110,7 +111,7 @@ pub struct Init<'info> {
         token::authority = vault,
         payer = payer,
     )]
-    pub vault_token: CpiAccount<'info, TokenAccount>,
+    pub vault_token: Account<'info, TokenAccount>,
 
     #[account(
         init, 
@@ -120,9 +121,9 @@ pub struct Init<'info> {
         mint::decimals = mint_token.decimals,
         payer = payer,
     )]
-    pub vault_mint: CpiAccount<'info, Mint>,
+    pub vault_mint: Account<'info, Mint>,
 
-    pub mint_token: CpiAccount<'info, Mint>,
+    pub mint_token: Account<'info, Mint>,
 
     #[account(mut, signer)]
     pub payer: AccountInfo<'info>,
@@ -148,19 +149,19 @@ pub struct Vault {
 #[derive(Accounts)]
 pub struct Deposit<'info> {
     #[account(mut, has_one = owner)]
-    depositor: CpiAccount<'info, TokenAccount>,
+    depositor: Account<'info, TokenAccount>,
 
     #[account(mut, "vault.mint_token == depositor.mint")]
-    vault: CpiAccount<'info, Vault>,
+    vault: Account<'info, Vault>,
 
     #[account(mut, "vault_token.mint == vault.mint_token")]
-    vault_token: CpiAccount<'info, TokenAccount>,
+    vault_token: Account<'info, TokenAccount>,
 
     #[account(mut)]
-    vault_mint: CpiAccount<'info, Mint>,
+    vault_mint: Account<'info, Mint>,
 
     #[account(mut, "user_vault.mint == vault.vault_mint")]
-    user_vault: CpiAccount<'info, TokenAccount>,
+    user_vault: Account<'info, TokenAccount>,
 
     #[account(signer)]
     owner: AccountInfo<'info>,
@@ -171,22 +172,23 @@ pub struct Deposit<'info> {
 #[derive(Accounts)]
 pub struct Withdraw<'info> {
     #[account(mut, has_one = owner)]
-    withdrawer: CpiAccount<'info, TokenAccount>,
+    withdrawer: Account<'info, TokenAccount>,
 
     #[account(mut, "vault.mint_token == withdrawer.mint")]
-    vault: CpiAccount<'info, Vault>,
+    vault: Account<'info, Vault>,
 
     #[account(mut, "vault_token.mint == vault.mint_token")]
-    vault_token: CpiAccount<'info, TokenAccount>,
+    vault_token: Account<'info, TokenAccount>,
 
     #[account(mut)]
-    vault_mint: CpiAccount<'info, Mint>,
+    vault_mint: Account<'info, Mint>,
 
     #[account(mut, "user_vault.mint == vault.vault_mint")]
-    user_vault: CpiAccount<'info, TokenAccount>,
+    user_vault: Account<'info, TokenAccount>,
 
     #[account(signer)]
     owner: AccountInfo<'info>,
 
+    #[account()]
     token_program: AccountInfo<'info>,
 }
