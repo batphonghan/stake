@@ -151,16 +151,16 @@ pub struct Deposit<'info> {
     #[account(mut, has_one = owner)]
     depositor: Account<'info, TokenAccount>,
 
-    #[account(mut, "vault.mint_token == depositor.mint")]
+    #[account(mut, constraint = vault.mint_token == depositor.mint)]
     vault: Account<'info, Vault>,
 
-    #[account(mut, "vault_token.mint == vault.mint_token")]
+    #[account(mut, constraint = vault_token.mint == vault.mint_token)]
     vault_token: Account<'info, TokenAccount>,
 
     #[account(mut)]
     vault_mint: Account<'info, Mint>,
 
-    #[account(mut, "user_vault.mint == vault.vault_mint")]
+    #[account(mut, constraint = user_vault.mint == vault.vault_mint)]
     user_vault: Account<'info, TokenAccount>,
 
     #[account(signer)]
@@ -174,16 +174,16 @@ pub struct Withdraw<'info> {
     #[account(mut, has_one = owner)]
     withdrawer: Account<'info, TokenAccount>,
 
-    #[account(mut, "vault.mint_token == withdrawer.mint")]
+    #[account(mut, constraint = vault.mint_token == withdrawer.mint)]
     vault: Account<'info, Vault>,
 
-    #[account(mut, "vault_token.mint == vault.mint_token")]
+    #[account(mut, constraint = vault_token.mint == vault.mint_token)]
     vault_token: Account<'info, TokenAccount>,
 
     #[account(mut)]
     vault_mint: Account<'info, Mint>,
 
-    #[account(mut, "user_vault.mint == vault.vault_mint")]
+    #[account(mut, constraint = user_vault.mint == vault.vault_mint)]
     user_vault: Account<'info, TokenAccount>,
 
     #[account(signer)]
